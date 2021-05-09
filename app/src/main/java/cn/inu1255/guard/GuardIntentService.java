@@ -2,7 +2,6 @@ package cn.inu1255.guard;
 
 import android.app.IntentService;
 import android.content.Intent;
-import android.content.Context;
 
 public class GuardIntentService extends IntentService {
     public GuardIntentService() {

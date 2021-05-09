@@ -38,6 +38,7 @@ public class ServiceTool {
     static String guard_accessibility_name = "米维";
     public static int guard_check_duration = 60000;
     private static boolean guard_restarting;
+    private static long guard_restart_at;
 
     public static boolean isConnected() {
         return connected != null;
@@ -559,12 +560,6 @@ public class ServiceTool {
         guard_package_running_at = System.currentTimeMillis();
     }
 
-    public static void checkRunning() {
-        if (guard_package_running_at + guard_check_duration < System.currentTimeMillis()) {
-            restart();
-        }
-    }
-
     public static void stop() {
         Log.w(TAG, "开始清理");
         performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS);
@@ -605,10 +600,16 @@ public class ServiceTool {
 
     public static void start() {
         if (TextUtils.isEmpty(guard_package)) return;
+        int n;
         Log.w(TAG, "打开程序:" + guard_package);
         ITool.open(getContext(), guard_package);
-        ITool.sleep(1000);
-        clickByPath("T允许", null, 0);
+        n = 10;
+        while (n-- > 0) {
+            clickByPath("T允许", null, 0);
+            if (clickByPath("T立即开始", null, 0))
+                break;
+            ITool.sleep(500);
+        }
         if (TextUtils.isEmpty(guard_accessibility_name)) return;
         ITool.sleep(3000);
         Log.w(TAG, "启动辅助功能:" + guard_accessibility_name);
@@ -616,7 +617,7 @@ public class ServiceTool {
             Log.e(TAG, "启动辅助功能失败");
             return;
         }
-        int n = 30;
+        n = 30;
         while (n-- > 0) {
             clickByPath("T已下载的服务", null, 0);
             clickByPath("T更多已下载的服务", null, 0);
@@ -628,7 +629,8 @@ public class ServiceTool {
         n = 30;
         while (n-- > 0) {
             clickByPath("Vandroid:id/title", null, 0);
-            clickByPath("T确定", null, 0);
+            if (clickByPath("T确定", null, 0))
+                break;
             if (clickByPath("T允许", null, 0))
                 break;
             ITool.sleep(500);
@@ -636,7 +638,11 @@ public class ServiceTool {
     }
 
     static void restart() {
-        guard_package_running_at = System.currentTimeMillis();
+        if (guard_restart_at + 60000 > System.currentTimeMillis()) {
+            Log.e(TAG, "重启过于频繁");
+            return;
+        }
+        Log.w(TAG, "开始重启");
         if (guard_restarting) {
             Log.e(TAG, "正在重启中，请忽重复请求");
             return;
@@ -644,6 +650,7 @@ public class ServiceTool {
         if (!isAccessibilityOn()) {
             return;
         }
+        guard_restart_at = System.currentTimeMillis();
         guard_restarting = true;
         try {
             stop();
@@ -655,7 +662,23 @@ public class ServiceTool {
         guard_restarting = false;
     }
 
+    static void checkRunning() {
+        if (guard_package_running_at + guard_check_duration < System.currentTimeMillis()) {
+            restart();
+        }
+    }
+
     public static String getGuardPackage() {
         return guard_package;
+    }
+
+    public static String getGuardTip() {
+        if (guard_restart_at < 1) return "尚未守护";
+        return "上次守护: " + (System.currentTimeMillis() - guard_restart_at) / 1000 + "秒前";
+    }
+
+    public static String getGuardTip1() {
+        if (guard_package_running_at < 1) return "尚未运行";
+        return "最近在线: " + (System.currentTimeMillis() - guard_package_running_at) / 1000 + "秒前";
     }
 }

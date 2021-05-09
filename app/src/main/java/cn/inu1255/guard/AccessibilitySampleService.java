@@ -21,7 +21,7 @@ public class AccessibilitySampleService extends AccessibilityService {
         ServiceTool.setConnected(this);
         ITool.openSelf(this);
         ServiceTool.setGuardPackage(null);
-        checkRunning();
+        new Handler().postDelayed(() -> checkRunning(), 10000);
     }
 
     private void checkRunning() {
