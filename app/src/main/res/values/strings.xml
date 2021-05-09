@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">守护程序</string>
+    <string name="accessibility_tip">守护程序</string>
+    <string name="accessibility_desc">守护程序</string>
+</resources>
