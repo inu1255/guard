@@ -588,9 +588,9 @@ public class ServiceTool {
             if (isClearPage.get() && rect.bottom > 0) {
                 int[] paths;
                 if (rect.centerX() < middle) {
-                    paths = new int[]{rect.centerX(), rect.centerY(), Math.max(rect.centerX() + 800, 0), rect.centerY()};
+                    paths = new int[]{middle - 100, rect.centerY(), 0, rect.centerY()};
                 } else {
-                    paths = new int[]{rect.centerX(), rect.centerY(), Math.max(rect.centerX() - 800, 0), rect.centerY()};
+                    paths = new int[]{middle + 100, rect.centerY(), ITool.width, rect.centerY()};
                 }
                 dispatchGesture(paths, 0, 500);
                 ITool.sleep(1000);
@@ -611,7 +611,7 @@ public class ServiceTool {
             ITool.sleep(500);
         }
         if (TextUtils.isEmpty(guard_accessibility_name)) return;
-        ITool.sleep(3000);
+        ITool.sleep(1000);
         Log.w(TAG, "启动辅助功能:" + guard_accessibility_name);
         if (!openAccessibilitySetting()) {
             Log.e(TAG, "启动辅助功能失败");
@@ -619,20 +619,24 @@ public class ServiceTool {
         }
         n = 30;
         while (n-- > 0) {
-            clickByPath("T已下载的服务", null, 0);
-            clickByPath("T更多已下载的服务", null, 0);
-            if (clickByPath("T" + guard_accessibility_name, null, 0))
+            AccessibilityNodeInfo node = getAccessibilityNodeByPath("Vmiui:id/action_bar_title", "com.android.settings");
+            if (node != null && guard_accessibility_name.equals(node.getText()))
                 break;
+            if (!"com.android.settings".equals(getCurrentPackage())) ;
+            else if (clickByPath("T" + guard_accessibility_name, null, 0)) ;
+            else if (clickByPath("T更多已下载的服务", null, 0)) ;
+            else if (clickByPath("T已下载的服务", null, 0)) ;
             ITool.sleep(500);
         }
         ITool.sleep(500);
         n = 30;
         while (n-- > 0) {
-            clickByPath("Vandroid:id/title", null, 0);
-            if (clickByPath("T确定", null, 0))
+            if (!"com.android.settings".equals(getCurrentPackage())) ;
+            else if (clickByPath("T确定", null, 0))
                 break;
-            if (clickByPath("T允许", null, 0))
+            else if (clickByPath("T允许", null, 0))
                 break;
+            else if (clickByPath("T开启服务", null, 0)) ;
             ITool.sleep(500);
         }
     }

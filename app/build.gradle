@@ -1,14 +1,22 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        release {
+            storeFile file('D:\\opt\\autoclick\\android.keystore')
+            storePassword 'quan2go199337'
+            keyAlias 'key'
+            keyPassword 'quan2go199337'
+        }
+    }
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
     defaultConfig {
         applicationId "cn.inu1255.guard"
         minSdkVersion 19
         targetSdkVersion 30
-        versionCode 1
-        versionName "1.0"
+        versionCode 4
+        versionName "1.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

@@ -26,9 +26,7 @@
                 android:resource="@xml/accessibility_config" />
         </service>
 
-        <activity
-            android:name=".MainActivity"
-            android:excludeFromRecents="true">
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
