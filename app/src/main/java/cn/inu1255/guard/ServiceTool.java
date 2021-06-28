@@ -622,7 +622,8 @@ public class ServiceTool {
             AccessibilityNodeInfo node = getAccessibilityNodeByPath("Vmiui:id/action_bar_title", "com.android.settings");
             if (node != null && guard_accessibility_name.equals(node.getText()))
                 break;
-            if (!"com.android.settings".equals(getCurrentPackage())) ;
+            if (clickByPath("T立即开始", null, 0)) ;
+            else if (!"com.android.settings".equals(getCurrentPackage())) ;
             else if (clickByPath("T" + guard_accessibility_name, null, 0)) ;
             else if (clickByPath("T更多已下载的服务", null, 0)) ;
             else if (clickByPath("T已下载的服务", null, 0)) ;
@@ -637,6 +638,11 @@ public class ServiceTool {
             else if (clickByPath("T允许", null, 0))
                 break;
             else if (clickByPath("T开启服务", null, 0)) ;
+            else if (clickByPath("T禁止", null, 0)) ;
+            ITool.sleep(500);
+        }
+        while ("com.android.settings".equals(getCurrentPackage())) {
+            performGlobalAction(1);
             ITool.sleep(500);
         }
     }
