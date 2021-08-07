@@ -1,7 +1,10 @@
 package cn.inu1255.guard;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -9,12 +12,14 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.os.Build;
+import android.os.PowerManager;
 import android.os.Process;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
+import android.view.Window;
 import android.view.WindowManager;
 
 import java.lang.reflect.Method;
@@ -24,6 +29,8 @@ public class ITool {
     public static int width = 0;
     public static int nav_height;
     public static int btn_height;
+    private static KeyguardManager.KeyguardLock kl;
+    private static PowerManager.WakeLock wl;
 
     public static void init(Context context) {
         if (width < 1) {
@@ -159,5 +166,40 @@ public class ITool {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
+    }
+
+    public static boolean isScreenOn(Context context) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return pm.isScreenOn();//如果为true，则表示屏幕“亮”了，否则屏幕“暗”了。
+    }
+
+    /**
+     * 唤醒手机屏幕并解锁
+     */
+    @SuppressLint("InvalidWakeLockTag")
+    public static void wakeUpAndUnlock(Context context, boolean b) {
+        if (b) {
+            //获取电源管理器对象
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+
+            //获取PowerManager.WakeLock对象，后面的参数|表示同时传入两个值，最后的是调试用的Tag
+            wl = pm.newWakeLock(PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.SCREEN_BRIGHT_WAKE_LOCK, "bright");
+
+            //点亮屏幕
+            wl.acquire();
+
+            //得到键盘锁管理器对象
+            KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+            kl = km.newKeyguardLock("unLock");
+
+            //解锁
+            kl.disableKeyguard();
+        } else {
+            //锁屏
+            kl.reenableKeyguard();
+
+            //释放wakeLock，关灯
+            wl.release();
+        }
     }
 }

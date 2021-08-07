@@ -12,6 +12,7 @@ import android.text.TextUtils;
 import android.util.AndroidRuntimeException;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Toast;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +37,7 @@ public class ServiceTool {
     private static String guard_package = "cn.inu1255.autoclick";
     private static long guard_package_running_at = 0;
     static String guard_accessibility_name = "米维";
-    public static int guard_check_duration = 60000;
+    public static int guard_check_duration = 30000;
     private static boolean guard_restarting;
     private static long guard_restart_at;
 
@@ -51,6 +52,10 @@ public class ServiceTool {
     public static void setConnected(AccessibilitySampleService service) {
         connected = service;
         c = service;
+    }
+
+    public static boolean isHuawei() {
+        return "HUAWEI".equals(Build.BRAND);
     }
 
     // region accessibility methods
@@ -481,9 +486,7 @@ public class ServiceTool {
 
     public static boolean isAccessibilityOn() {
         if (connected == null) return false;
-        AccessibilityNodeInfo root = connected.getRootInActiveWindow();
-        if (root == null) return false;
-        return root.getWindowId() >= 0;
+        return performGlobalAction(100);
     }
 
     public static int disableAccessibility() {
@@ -525,10 +528,10 @@ public class ServiceTool {
         return click(node, flag);
     }
 
-    public static int performGlobalAction(int action) {
-        if (connected == null) return 0;
+    public static boolean performGlobalAction(int action) {
+        if (connected == null) return false;
         connected.performGlobalAction(action);
-        return 1;
+        return true;
     }
 
     public static boolean dispatchGesture(int[] ss, long startTime, long duration) {
@@ -567,59 +570,100 @@ public class ServiceTool {
         // 清理任务
         String appName = getContext().getString(R.string.app_name);
         AtomicBoolean exist = new AtomicBoolean(true);
-        AtomicBoolean isClearPage = new AtomicBoolean(true);
+        AtomicBoolean isClearPage = new AtomicBoolean(false);
         int middle = ITool.width / 2;
-        while (exist.get() && isClearPage.get()) {
+        int n = 10;
+        while (exist.get() && n-- > 0) {
+            Log.w(TAG, "开始清理 n:" + n);
             exist.set(false);
             isClearPage.set(false);
             Rect rect = new Rect();
+            if (isHuawei()) swapeRight();
             bfs((node, id, path, parent) -> {
                 String view = node.getViewIdResourceName();
                 if (view == null) return null;
+                if (view.endsWith(":id/clear_all_recents_image_button")) isClearPage.set(true);
                 if (view.endsWith(":id/clearAnimView")) isClearPage.set(true);
                 if (exist.get()) return null;
-                CharSequence text = node.getText();
-                if (view.endsWith(":id/title") && (text == null || !text.toString().equals(appName))) {
-                    exist.set(true);
-                    node.getBoundsInScreen(rect);
+                node.getBoundsInScreen(rect);
+                if (rect.bottom > 0 && rect.right > 0) {
+                    if (view.endsWith(":id/title") && !appName.equals(node.getText())) {
+                        exist.set(true);
+                    }
                 }
                 return null;
             });
-            if (isClearPage.get() && rect.bottom > 0) {
-                int[] paths;
-                if (rect.centerX() < middle) {
-                    paths = new int[]{middle - 100, rect.centerY(), 0, rect.centerY()};
+            if (isClearPage.get() && exist.get()) {
+                if (isHuawei()) {
+                    int[] paths;
+                    if (rect.centerX() < middle) {
+                        paths = new int[]{rect.right - 50, ITool.height * 3 / 4, rect.right - 50, ITool.height / 4};
+                    } else {
+                        paths = new int[]{rect.left + 50, ITool.height * 3 / 4, rect.left + 50, ITool.height / 4};
+                    }
+                    dispatchGesture(paths, 0, 500);
+                    ITool.sleep(1000);
                 } else {
-                    paths = new int[]{middle + 100, rect.centerY(), ITool.width, rect.centerY()};
+                    int[] paths;
+                    if (rect.centerX() < middle) {
+                        paths = new int[]{rect.centerX(), rect.centerY(), ITool.width - 50, rect.centerY()};
+                    } else {
+                        paths = new int[]{rect.centerX(), rect.centerY(), 50, rect.centerY()};
+                    }
+                    dispatchGesture(paths, 0, 500);
+                    ITool.sleep(1000);
                 }
-                dispatchGesture(paths, 0, 500);
-                ITool.sleep(1000);
             }
         }
     }
 
+    public static void swapeRight() {
+        int[] paths = {50, 960, 1000, 960};
+        dispatchGesture(paths, 0, 500);
+    }
+
+    public static void swapeUp() {
+        int[] paths = {540, 1344, 540, 576};
+        dispatchGesture(paths, 0, 500);
+    }
+
     public static void start() {
         if (TextUtils.isEmpty(guard_package)) return;
+        if (!TextUtils.isEmpty(guard_accessibility_name)) {
+            Log.w(TAG, "通过桌面打开程序:" + guard_package);
+            performGlobalAction(2);
+            ITool.sleep(1000);
+            if (clickByPath("T" + guard_accessibility_name, null, 0)) {
+                Log.w(TAG, "通过桌面打开程序成功");
+            } else {
+                Log.w(TAG, "通过桌面打开程序失败，尝试直接打开");
+                ITool.open(getContext(), guard_package);
+                ITool.sleep(2000);
+            }
+        } else {
+            Log.w(TAG, "直接打开程序:" + guard_package);
+            ITool.open(getContext(), guard_package);
+            ITool.sleep(2000);
+        }
         int n;
-        Log.w(TAG, "打开程序:" + guard_package);
-        ITool.open(getContext(), guard_package);
         n = 10;
         while (n-- > 0) {
-            clickByPath("T允许", null, 0);
-            if (clickByPath("T立即开始", null, 0))
-                break;
-            ITool.sleep(500);
+            if (clickByPath("T允许", null, 0)) ;
+            else if (clickByPath("T立即开始", null, 0)) ;
+            else if (clickByPath("Vstart", null, 0)) break;
+            ITool.sleep(1000);
         }
+        Log.w(TAG, "点击立即开始:" + n);
+        if (n <= 0) return;
         if (TextUtils.isEmpty(guard_accessibility_name)) return;
         ITool.sleep(1000);
-        Log.w(TAG, "启动辅助功能:" + guard_accessibility_name);
-        if (!openAccessibilitySetting()) {
-            Log.e(TAG, "启动辅助功能失败");
-            return;
-        }
-        n = 30;
+        n = 10;
         while (n-- > 0) {
-            AccessibilityNodeInfo node = getAccessibilityNodeByPath("Vmiui:id/action_bar_title", "com.android.settings");
+            AccessibilityNodeInfo node;
+            if (isHuawei())
+                node = getAccessibilityNodeByPath("Vandroid:id/action_bar_title", "com.android.settings");
+            else
+                node = getAccessibilityNodeByPath("Vmiui:id/action_bar_title", "com.android.settings");
             if (node != null && guard_accessibility_name.equals(node.getText()))
                 break;
             if (clickByPath("T立即开始", null, 0)) ;
@@ -627,34 +671,43 @@ public class ServiceTool {
             else if (clickByPath("T" + guard_accessibility_name, null, 0)) ;
             else if (clickByPath("T更多已下载的服务", null, 0)) ;
             else if (clickByPath("T已下载的服务", null, 0)) ;
+            if (isHuawei()) {
+                swapeUp();
+            }
             ITool.sleep(500);
         }
         ITool.sleep(500);
-        n = 30;
-        while (n-- > 0) {
-            if (!"com.android.settings".equals(getCurrentPackage())) ;
-            else if (clickByPath("T确定", null, 0))
-                break;
-            else if (clickByPath("T允许", null, 0))
-                break;
-            else if (clickByPath("T开启服务", null, 0)) ;
-            else if (clickByPath("T禁止", null, 0)) ;
+        if (n > 0) {
+            n = 10;
+            while (n-- > 0) {
+                if (!"com.android.settings".equals(getCurrentPackage())) ;
+                else if (clickByPath("T确定", null, 0))
+                    break;
+                else if (clickByPath("T允许", null, 0))
+                    break;
+                else if (clickByPath("T开启服务", null, 0)) ;
+                else if (clickByPath("T禁止", null, 0)) ;
+                else if (clickByPath("T停止", null, 0)) ;
+                else if (clickByPath("Vandroid:id/switch_widget", null, 0)) ;
+                ITool.sleep(500);
+            }
             ITool.sleep(500);
         }
-        while ("com.android.settings".equals(getCurrentPackage())) {
+        n = 10;
+        while (n-- > 0 && "com.android.settings".equals(getCurrentPackage())) {
             performGlobalAction(1);
             ITool.sleep(500);
         }
     }
 
     static void restart() {
-        if (guard_restart_at + 60000 > System.currentTimeMillis()) {
-            Log.e(TAG, "重启过于频繁");
-            return;
-        }
         Log.w(TAG, "开始重启");
         if (guard_restarting) {
             Log.e(TAG, "正在重启中，请忽重复请求");
+            return;
+        }
+        if (guard_restart_at + 30000 > System.currentTimeMillis()) {
+            Log.e(TAG, "重启过于频繁");
             return;
         }
         if (!isAccessibilityOn()) {
@@ -662,6 +715,12 @@ public class ServiceTool {
         }
         guard_restart_at = System.currentTimeMillis();
         guard_restarting = true;
+        try {
+            if (!ITool.isScreenOn(getContext()))
+                ITool.wakeUpAndUnlock(getContext(), true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         try {
             stop();
             start();
@@ -674,6 +733,7 @@ public class ServiceTool {
 
     static void checkRunning() {
         if (guard_package_running_at + guard_check_duration < System.currentTimeMillis()) {
+            Toast.makeText(getContext(), "米维未启动，开始启动", Toast.LENGTH_LONG).show();
             restart();
         }
     }
